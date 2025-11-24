@@ -49,6 +49,31 @@ interface WorkoutPlan {
   title: string;
   duration: string;
   exercises: string[];
+  isCustom?: boolean;
+}
+
+interface Exercise {
+  id: string;
+  name: string;
+  sets?: string;
+  reps?: string;
+  duration?: string;
+}
+
+interface WorkoutGoal {
+  id: string;
+  title: string;
+  target: number;
+  current: number;
+  unit: string;
+}
+
+interface HealthMetric {
+  date: string;
+  weight?: number;
+  steps?: number;
+  sleep?: number;
+  water?: number;
 }
 
 const Index = () => {
@@ -89,7 +114,7 @@ const Index = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
 
-  const workoutPlans: WorkoutPlan[] = [
+  const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([
     {
       id: '1',
       title: 'Утренняя зарядка для начинающих',
@@ -114,7 +139,31 @@ const Index = () => {
       duration: '40 мин',
       exercises: ['Приседания с весом 4x12', 'Выпады 3x15', 'Отжимания широкие 3x12', 'Пресс 4x20']
     },
-  ];
+  ]);
+
+  const [customWorkoutTitle, setCustomWorkoutTitle] = useState('');
+  const [customWorkoutDuration, setCustomWorkoutDuration] = useState('');
+  const [customExercises, setCustomExercises] = useState<Exercise[]>([]);
+  const [newExerciseName, setNewExerciseName] = useState('');
+  const [newExerciseSets, setNewExerciseSets] = useState('');
+  const [newExerciseReps, setNewExerciseReps] = useState('');
+
+  const [workoutGoals, setWorkoutGoals] = useState<WorkoutGoal[]>([
+    { id: '1', title: 'Отжимания', target: 50, current: 32, unit: 'раз' },
+    { id: '2', title: 'Планка', target: 180, current: 120, unit: 'сек' },
+    { id: '3', title: 'Тренировок в неделю', target: 5, current: 3, unit: 'шт' },
+  ]);
+
+  const [healthMetrics, setHealthMetrics] = useState<HealthMetric[]>([
+    { date: '2024-01-18', weight: 72, steps: 8500, sleep: 7.5, water: 2.0 },
+    { date: '2024-01-17', weight: 72.5, steps: 10200, sleep: 8, water: 2.5 },
+    { date: '2024-01-16', weight: 73, steps: 6800, sleep: 6.5, water: 1.8 },
+  ]);
+
+  const [todayWeight, setTodayWeight] = useState('');
+  const [todaySteps, setTodaySteps] = useState('');
+  const [todaySleep, setTodaySleep] = useState('');
+  const [todayWater, setTodayWater] = useState('');
 
   const toggleHabit = (id: string) => {
     setHabits(habits.map(h => 
@@ -166,6 +215,72 @@ const Index = () => {
       amount
     };
     setIncomes([...incomes, newIncome]);
+  };
+
+  const addExerciseToCustomPlan = () => {
+    if (!newExerciseName.trim()) return;
+    
+    const exercise: Exercise = {
+      id: Date.now().toString(),
+      name: newExerciseName,
+      sets: newExerciseSets,
+      reps: newExerciseReps,
+    };
+    
+    setCustomExercises([...customExercises, exercise]);
+    setNewExerciseName('');
+    setNewExerciseSets('');
+    setNewExerciseReps('');
+  };
+
+  const createCustomWorkout = () => {
+    if (!customWorkoutTitle.trim() || customExercises.length === 0) return;
+    
+    const exerciseStrings = customExercises.map(ex => {
+      const parts = [ex.name];
+      if (ex.sets && ex.reps) parts.push(`${ex.sets}x${ex.reps}`);
+      return parts.join(' ');
+    });
+    
+    const newPlan: WorkoutPlan = {
+      id: Date.now().toString(),
+      title: customWorkoutTitle,
+      duration: customWorkoutDuration || '30 мин',
+      exercises: exerciseStrings,
+      isCustom: true,
+    };
+    
+    setWorkoutPlans([...workoutPlans, newPlan]);
+    setCustomWorkoutTitle('');
+    setCustomWorkoutDuration('');
+    setCustomExercises([]);
+  };
+
+  const removeExercise = (id: string) => {
+    setCustomExercises(customExercises.filter(ex => ex.id !== id));
+  };
+
+  const updateGoalProgress = (id: string, value: number) => {
+    setWorkoutGoals(workoutGoals.map(goal => 
+      goal.id === id ? { ...goal, current: value } : goal
+    ));
+  };
+
+  const addHealthMetric = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const metric: HealthMetric = {
+      date: today,
+      weight: todayWeight ? parseFloat(todayWeight) : undefined,
+      steps: todaySteps ? parseInt(todaySteps) : undefined,
+      sleep: todaySleep ? parseFloat(todaySleep) : undefined,
+      water: todayWater ? parseFloat(todayWater) : undefined,
+    };
+    
+    setHealthMetrics([metric, ...healthMetrics.filter(m => m.date !== today)]);
+    setTodayWeight('');
+    setTodaySteps('');
+    setTodaySleep('');
+    setTodayWater('');
   };
 
   const addRecurringExpense = (name: string, amount: number) => {
@@ -760,108 +875,359 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="health" className="mt-6 animate-slide-up">
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Готовые планы тренировок</CardTitle>
-                  <CardDescription>Выбери подходящую программу</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4">
-                    {workoutPlans.map((plan) => (
-                      <Card key={plan.id} className="hover-scale">
-                        <CardContent className="p-5">
-                          <div className="flex items-start gap-4">
-                            <div className="w-14 h-14 rounded-xl bg-fitness flex items-center justify-center text-white flex-shrink-0">
-                              <Icon name="Dumbbell" size={28} />
+            <Tabs defaultValue="tracker" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="tracker">Трекер</TabsTrigger>
+                <TabsTrigger value="workouts">Тренировки</TabsTrigger>
+                <TabsTrigger value="goals">Цели</TabsTrigger>
+                <TabsTrigger value="custom">Свой план</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="tracker" className="space-y-6 mt-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Трекер здоровья</CardTitle>
+                        <CardDescription>Отслеживай показатели каждый день</CardDescription>
+                      </div>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button className="gap-2">
+                            <Icon name="Plus" size={18} />
+                            Добавить данные
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Сегодняшние показатели</DialogTitle>
+                            <DialogDescription>Заполни данные за день</DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label>Вес (кг)</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="72.5"
+                                  value={todayWeight}
+                                  onChange={(e) => setTodayWeight(e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label>Шаги</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="10000"
+                                  value={todaySteps}
+                                  onChange={(e) => setTodaySteps(e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label>Сон (часы)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.5"
+                                  placeholder="7.5"
+                                  value={todaySleep}
+                                  onChange={(e) => setTodaySleep(e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label>Вода (литры)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  placeholder="2.0"
+                                  value={todayWater}
+                                  onChange={(e) => setTodayWater(e.target.value)}
+                                />
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <h3 className="font-bold text-lg">{plan.title}</h3>
-                                <Badge variant="secondary" className="flex-shrink-0">
-                                  <Icon name="Clock" size={12} className="mr-1" />
-                                  {plan.duration}
-                                </Badge>
-                              </div>
-                              <div className="space-y-2">
-                                {plan.exercises.map((exercise, idx) => (
-                                  <div key={idx} className="flex items-center gap-2 text-sm">
-                                    <Icon name="CheckCircle2" size={16} className="text-fitness flex-shrink-0" />
-                                    <span>{exercise}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              <Button className="mt-4 w-full bg-fitness hover:bg-fitness/90">
-                                Начать тренировку
-                              </Button>
+                            <Button onClick={addHealthMetric} className="w-full">
+                              Сохранить
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-4 gap-4 mb-6">
+                      <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                              <Icon name="Scale" size={24} />
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Вес</div>
+                              <div className="text-2xl font-bold">{healthMetrics[0]?.weight || '-'} кг</div>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
 
-              <div className="grid md:grid-cols-2 gap-4">
+                      <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white">
+                              <Icon name="Footprints" size={24} />
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Шаги</div>
+                              <div className="text-2xl font-bold">{healthMetrics[0]?.steps?.toLocaleString('ru') || '-'}</div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white">
+                              <Icon name="Moon" size={24} />
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Сон</div>
+                              <div className="text-2xl font-bold">{healthMetrics[0]?.sleep || '-'} ч</div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900 border-cyan-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-cyan-500 flex items-center justify-center text-white">
+                              <Icon name="Droplet" size={24} />
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Вода</div>
+                              <div className="text-2xl font-bold">{healthMetrics[0]?.water || '-'} л</div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card className="bg-muted/30">
+                      <CardHeader>
+                        <CardTitle className="text-lg">История показателей</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ScrollArea className="h-64">
+                          <div className="space-y-3">
+                            {healthMetrics.map((metric) => (
+                              <div key={metric.date} className="flex items-center justify-between p-3 bg-background rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className="text-sm font-medium">{new Date(metric.date).toLocaleDateString('ru')}</div>
+                                </div>
+                                <div className="flex gap-4 text-sm">
+                                  {metric.weight && <span>⚖️ {metric.weight}кг</span>}
+                                  {metric.steps && <span>👣 {metric.steps.toLocaleString('ru')}</span>}
+                                  {metric.sleep && <span>😴 {metric.sleep}ч</span>}
+                                  {metric.water && <span>💧 {metric.water}л</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="workouts" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Здоровые привычки</CardTitle>
+                    <CardTitle>Готовые планы тренировок</CardTitle>
+                    <CardDescription>Выбери подходящую программу для дома</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {habits.filter(h => h.category === 'health' || h.category === 'fitness').map((habit) => (
-                        <div key={habit.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                          <button
-                            onClick={() => toggleHabit(habit.id)}
-                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              habit.completed ? 'bg-health text-white' : 'bg-muted'
-                            }`}
-                          >
-                            {habit.completed ? <Icon name="Check" size={20} /> : <Icon name="Heart" size={20} />}
-                          </button>
-                          <div className="flex-1">
-                            <div className={habit.completed ? 'line-through text-muted-foreground' : ''}>
-                              {habit.title}
+                    <div className="grid gap-4">
+                      {workoutPlans.map((plan) => (
+                        <Card key={plan.id} className="hover-scale">
+                          <CardContent className="p-5">
+                            <div className="flex items-start gap-4">
+                              <div className="w-14 h-14 rounded-xl bg-fitness flex items-center justify-center text-white flex-shrink-0">
+                                {plan.isCustom ? <Icon name="Star" size={28} /> : <Icon name="Dumbbell" size={28} />}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div>
+                                    <h3 className="font-bold text-lg">{plan.title}</h3>
+                                    {plan.isCustom && (
+                                      <Badge variant="outline" className="mt-1">Мой план</Badge>
+                                    )}
+                                  </div>
+                                  <Badge variant="secondary" className="flex-shrink-0">
+                                    <Icon name="Clock" size={12} className="mr-1" />
+                                    {plan.duration}
+                                  </Badge>
+                                </div>
+                                <div className="space-y-2">
+                                  {plan.exercises.map((exercise, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 text-sm">
+                                      <Icon name="CheckCircle2" size={16} className="text-fitness flex-shrink-0" />
+                                      <span>{exercise}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                <Button className="mt-4 w-full bg-fitness hover:bg-fitness/90">
+                                  Начать тренировку
+                                </Button>
+                              </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">🔥 {habit.streak} дней</div>
-                          </div>
-                        </div>
+                          </CardContent>
+                        </Card>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
 
+              <TabsContent value="goals" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Питание сегодня</CardTitle>
+                    <CardTitle>Цели по тренировкам</CardTitle>
+                    <CardDescription>Отслеживай прогресс к целям</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Калории</span>
-                        <span className="font-bold">1840 / 2200</span>
-                      </div>
-                      <Progress value={84} className="h-2" />
-                      <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                        <div className="p-2 bg-muted rounded">
-                          <div className="font-bold text-blue-600">120г</div>
-                          <div className="text-muted-foreground">Белки</div>
-                        </div>
-                        <div className="p-2 bg-muted rounded">
-                          <div className="font-bold text-green-600">180г</div>
-                          <div className="text-muted-foreground">Углеводы</div>
-                        </div>
-                        <div className="p-2 bg-muted rounded">
-                          <div className="font-bold text-orange-600">60г</div>
-                          <div className="text-muted-foreground">Жиры</div>
-                        </div>
-                      </div>
+                      {workoutGoals.map((goal) => {
+                        const percent = Math.min((goal.current / goal.target) * 100, 100);
+                        return (
+                          <Card key={goal.id} className="bg-muted/30">
+                            <CardContent className="p-5">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-semibold text-lg">{goal.title}</h4>
+                                  <Badge className="bg-fitness">
+                                    {goal.current} / {goal.target} {goal.unit}
+                                  </Badge>
+                                </div>
+                                <Progress value={percent} className="h-3" />
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">{Math.round(percent)}% выполнено</span>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => updateGoalProgress(goal.id, Math.max(0, goal.current - 1))}
+                                    >
+                                      <Icon name="Minus" size={14} />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => updateGoalProgress(goal.id, Math.min(goal.target, goal.current + 1))}
+                                    >
+                                      <Icon name="Plus" size={14} />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
-              </div>
-            </div>
+              </TabsContent>
+
+              <TabsContent value="custom" className="space-y-6 mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Создать свой план тренировок</CardTitle>
+                    <CardDescription>Составь персональную программу</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Название плана</Label>
+                          <Input
+                            placeholder="Например: Моя утренняя зарядка"
+                            value={customWorkoutTitle}
+                            onChange={(e) => setCustomWorkoutTitle(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Длительность</Label>
+                          <Input
+                            placeholder="30 мин"
+                            value={customWorkoutDuration}
+                            onChange={(e) => setCustomWorkoutDuration(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="border rounded-lg p-4 space-y-3">
+                        <Label className="text-base font-semibold">Упражнения</Label>
+                        <div className="grid md:grid-cols-3 gap-3">
+                          <Input
+                            placeholder="Название упражнения"
+                            value={newExerciseName}
+                            onChange={(e) => setNewExerciseName(e.target.value)}
+                          />
+                          <Input
+                            placeholder="Подходы (3)"
+                            value={newExerciseSets}
+                            onChange={(e) => setNewExerciseSets(e.target.value)}
+                          />
+                          <Input
+                            placeholder="Повторы (15)"
+                            value={newExerciseReps}
+                            onChange={(e) => setNewExerciseReps(e.target.value)}
+                          />
+                        </div>
+                        <Button onClick={addExerciseToCustomPlan} variant="outline" className="w-full">
+                          <Icon name="Plus" size={16} className="mr-2" />
+                          Добавить упражнение
+                        </Button>
+
+                        {customExercises.length > 0 && (
+                          <div className="space-y-2 pt-3 border-t">
+                            {customExercises.map((exercise) => (
+                              <div key={exercise.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <Icon name="Dumbbell" size={16} className="text-fitness" />
+                                  <span className="font-medium">{exercise.name}</span>
+                                  {exercise.sets && exercise.reps && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {exercise.sets}x{exercise.reps}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => removeExercise(exercise.id)}
+                                >
+                                  <Icon name="X" size={16} />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={createCustomWorkout}
+                        disabled={!customWorkoutTitle || customExercises.length === 0}
+                        className="w-full bg-gradient-to-r from-fitness to-health"
+                      >
+                        <Icon name="Save" size={18} className="mr-2" />
+                        Создать план тренировок
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="coach" className="mt-6 animate-slide-up">
