@@ -326,7 +326,7 @@ const Index = () => {
                             msg.role === 'user'
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted'
-                          }
+                          }`}
                         >
                           {msg.text}
                         </div>
