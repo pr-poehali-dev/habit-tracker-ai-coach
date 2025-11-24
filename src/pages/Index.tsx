@@ -9,6 +9,9 @@ import Icon from '@/components/ui/icon';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 type Category = 'fitness' | 'learning' | 'health' | 'finance';
 
@@ -20,12 +23,32 @@ interface Habit {
   streak: number;
 }
 
-interface Lesson {
+interface Task {
   id: string;
   title: string;
+  description: string;
   category: Category;
+  completed: boolean;
+}
+
+interface Income {
+  id: string;
+  source: string;
+  amount: number;
+}
+
+interface Expense {
+  id: string;
+  name: string;
+  amount: number;
+  isRecurring: boolean;
+}
+
+interface WorkoutPlan {
+  id: string;
+  title: string;
   duration: string;
-  isPremium: boolean;
+  exercises: string[];
 }
 
 const Index = () => {
@@ -37,24 +60,122 @@ const Index = () => {
     { id: '4', title: 'Записать расходы', category: 'finance', completed: false, streak: 12 },
   ]);
 
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: '1', title: 'Изучить React hooks', description: 'Пройти документацию', category: 'learning', completed: false },
+    { id: '2', title: 'Планка 2 минуты', description: 'Увеличить время', category: 'fitness', completed: false },
+  ]);
+
+  const [incomes, setIncomes] = useState<Income[]>([
+    { id: '1', source: 'Зарплата', amount: 80000 },
+  ]);
+
+  const [expenses, setExpenses] = useState<Expense[]>([
+    { id: '1', name: 'Аренда жилья', amount: 30000, isRecurring: true },
+    { id: '2', name: 'Коммунальные услуги', amount: 5000, isRecurring: true },
+  ]);
+
+  const [dailyExpense, setDailyExpense] = useState('');
+  const [dailyExpenseAmount, setDailyExpenseAmount] = useState('');
+
+  const [savingsGoal, setSavingsGoal] = useState(50000);
+  const [currentSavings, setCurrentSavings] = useState(32000);
+
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskCategory, setNewTaskCategory] = useState<Category>('learning');
+
   const [chatMessages, setChatMessages] = useState([
-    { role: 'assistant', text: 'Привет! Я твой ИИ-коуч 🚀 Готов помочь с любыми вопросами по привычкам!' }
+    { role: 'assistant', text: 'Привет! Я твой ИИ-коуч 🚀 Готов помочь с любыми вопросами!' }
   ]);
   const [inputMessage, setInputMessage] = useState('');
 
-  const lessons: Lesson[] = [
-    { id: '1', title: 'Разминка для спины в офисе', category: 'fitness', duration: '12 мин', isPremium: false },
-    { id: '2', title: 'Основы цифрового маркетинга', category: 'learning', duration: '15 мин', isPremium: false },
-    { id: '3', title: 'Практика осознанности', category: 'health', duration: '10 мин', isPremium: true },
-    { id: '4', title: 'Личный бюджет: первые шаги', category: 'finance', duration: '15 мин', isPremium: false },
-    { id: '5', title: 'HIIT тренировка дома', category: 'fitness', duration: '20 мин', isPremium: true },
-    { id: '6', title: 'Английский: практика диалогов', category: 'learning', duration: '15 мин', isPremium: true },
+  const workoutPlans: WorkoutPlan[] = [
+    {
+      id: '1',
+      title: 'Утренняя зарядка для начинающих',
+      duration: '15 мин',
+      exercises: ['Приседания 3x15', 'Отжимания 3x10', 'Планка 3x30сек', 'Растяжка 5 мин']
+    },
+    {
+      id: '2',
+      title: 'HIIT тренировка',
+      duration: '20 мин',
+      exercises: ['Бёрпи 4x10', 'Прыжки 4x30сек', 'Альпинист 4x20', 'Отдых между подходами 30сек']
+    },
+    {
+      id: '3',
+      title: 'Йога для гибкости',
+      duration: '30 мин',
+      exercises: ['Приветствие солнцу', 'Поза собаки', 'Поза воина', 'Шавасана']
+    },
+    {
+      id: '4',
+      title: 'Силовая тренировка дома',
+      duration: '40 мин',
+      exercises: ['Приседания с весом 4x12', 'Выпады 3x15', 'Отжимания широкие 3x12', 'Пресс 4x20']
+    },
   ];
 
   const toggleHabit = (id: string) => {
     setHabits(habits.map(h => 
       h.id === id ? { ...h, completed: !h.completed } : h
     ));
+  };
+
+  const toggleTask = (id: string) => {
+    setTasks(tasks.map(t => 
+      t.id === id ? { ...t, completed: !t.completed } : t
+    ));
+  };
+
+  const addTask = () => {
+    if (!newTaskTitle.trim()) return;
+    
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title: newTaskTitle,
+      description: newTaskDescription,
+      category: newTaskCategory,
+      completed: false
+    };
+    
+    setTasks([...tasks, newTask]);
+    setNewTaskTitle('');
+    setNewTaskDescription('');
+  };
+
+  const addDailyExpense = () => {
+    if (!dailyExpense.trim() || !dailyExpenseAmount) return;
+    
+    const newExpense: Expense = {
+      id: Date.now().toString(),
+      name: dailyExpense,
+      amount: parseFloat(dailyExpenseAmount),
+      isRecurring: false
+    };
+    
+    setExpenses([...expenses, newExpense]);
+    setDailyExpense('');
+    setDailyExpenseAmount('');
+  };
+
+  const addIncome = (source: string, amount: number) => {
+    const newIncome: Income = {
+      id: Date.now().toString(),
+      source,
+      amount
+    };
+    setIncomes([...incomes, newIncome]);
+  };
+
+  const addRecurringExpense = (name: string, amount: number) => {
+    const newExpense: Expense = {
+      id: Date.now().toString(),
+      name,
+      amount,
+      isRecurring: true
+    };
+    setExpenses([...expenses, newExpense]);
   };
 
   const getCategoryColor = (category: Category) => {
@@ -80,6 +201,12 @@ const Index = () => {
   const completedToday = habits.filter(h => h.completed).length;
   const totalHabits = habits.length;
   const progressPercent = (completedToday / totalHabits) * 100;
+
+  const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
+  const totalRecurringExpenses = expenses.filter(e => e.isRecurring).reduce((sum, exp) => sum + exp.amount, 0);
+  const totalDailyExpenses = expenses.filter(e => !e.isRecurring).reduce((sum, exp) => sum + exp.amount, 0);
+  const monthlyProfit = totalIncome - totalRecurringExpenses - totalDailyExpenses;
+  const savingsPercent = (currentSavings / savingsGoal) * 100;
 
   const sendMessage = () => {
     if (!inputMessage.trim()) return;
@@ -156,18 +283,22 @@ const Index = () => {
         </div>
 
         <Tabs defaultValue="habits" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsList className="grid w-full grid-cols-5 h-auto">
             <TabsTrigger value="habits" className="gap-2">
               <Icon name="CheckCircle2" size={18} />
               <span className="hidden sm:inline">Привычки</span>
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="gap-2">
-              <Icon name="Calendar" size={18} />
-              <span className="hidden sm:inline">Календарь</span>
+            <TabsTrigger value="finance" className="gap-2">
+              <Icon name="Wallet" size={18} />
+              <span className="hidden sm:inline">Финансы</span>
             </TabsTrigger>
-            <TabsTrigger value="lessons" className="gap-2">
-              <Icon name="BookOpen" size={18} />
-              <span className="hidden sm:inline">Уроки</span>
+            <TabsTrigger value="development" className="gap-2">
+              <Icon name="GraduationCap" size={18} />
+              <span className="hidden sm:inline">Развитие</span>
+            </TabsTrigger>
+            <TabsTrigger value="health" className="gap-2">
+              <Icon name="Heart" size={18} />
+              <span className="hidden sm:inline">Здоровье</span>
             </TabsTrigger>
             <TabsTrigger value="coach" className="gap-2">
               <Icon name="MessageCircle" size={18} />
@@ -176,125 +307,560 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="habits" className="space-y-4 mt-6 animate-slide-up">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Мои задачи</h2>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Icon name="Plus" size={18} />
+                    Добавить задачу
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Новая задача</DialogTitle>
+                    <DialogDescription>Создай задачу для своего развития</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Название</Label>
+                      <Input 
+                        placeholder="Например: Пробежать 5км"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>Описание</Label>
+                      <Textarea 
+                        placeholder="Детали задачи..."
+                        value={newTaskDescription}
+                        onChange={(e) => setNewTaskDescription(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>Категория</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        {(['fitness', 'learning', 'health', 'finance'] as Category[]).map((cat) => (
+                          <Button
+                            key={cat}
+                            variant={newTaskCategory === cat ? 'default' : 'outline'}
+                            onClick={() => setNewTaskCategory(cat)}
+                            className="gap-2"
+                          >
+                            <Icon name={getCategoryIcon(cat)} size={16} />
+                            {cat}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <Button onClick={addTask} className="w-full">Создать задачу</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
             <div className="grid gap-3">
-              {habits.map((habit) => (
+              {tasks.map((task) => (
                 <Card 
-                  key={habit.id}
+                  key={task.id}
                   className={`transition-all duration-300 hover:shadow-lg ${
-                    habit.completed ? 'border-primary border-2' : ''
+                    task.completed ? 'border-primary border-2' : ''
                   }`}
                 >
                   <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-start gap-4">
                       <button
-                        onClick={() => toggleHabit(habit.id)}
-                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                          habit.completed 
+                        onClick={() => toggleTask(task.id)}
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
+                          task.completed 
                             ? 'bg-primary text-primary-foreground animate-celebrate' 
                             : 'bg-muted hover:bg-muted/80'
                         }`}
                       >
-                        {habit.completed ? (
-                          <Icon name="Check" size={24} />
+                        {task.completed ? (
+                          <Icon name="Check" size={20} />
                         ) : (
-                          <Icon name={getCategoryIcon(habit.category)} size={24} />
+                          <Icon name={getCategoryIcon(task.category)} size={20} />
                         )}
                       </button>
                       
                       <div className="flex-1">
-                        <h3 className={`font-semibold ${habit.completed ? 'line-through text-muted-foreground' : ''}`}>
-                          {habit.title}
+                        <h3 className={`font-semibold ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                          {task.title}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className={`${getCategoryColor(habit.category)} text-white border-0`}>
-                            {habit.category}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground flex items-center gap-1">
-                            🔥 {habit.streak} дней
-                          </span>
-                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                        <Badge variant="outline" className={`${getCategoryColor(task.category)} text-white border-0 mt-2`}>
+                          {task.category}
+                        </Badge>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          </TabsContent>
 
-          <TabsContent value="calendar" className="mt-6 animate-slide-up">
-            <Card>
-              <CardHeader>
-                <CardTitle>Календарь привычек</CardTitle>
-                <CardDescription>Отслеживай свой прогресс</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-center">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    className="rounded-md border"
-                  />
-                </div>
-                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {['fitness', 'learning', 'health', 'finance'].map((cat) => (
-                    <div key={cat} className="flex items-center gap-2">
-                      <div className={`w-4 h-4 rounded-full ${getCategoryColor(cat as Category)}`} />
-                      <span className="text-sm capitalize">{cat}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="lessons" className="space-y-4 mt-6 animate-slide-up">
-            <Card className="bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 border-primary">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-lg">Premium подписка</h3>
-                    <p className="text-sm text-muted-foreground">Получи доступ ко всем урокам</p>
-                  </div>
-                  <Button className="bg-gradient-to-r from-primary to-secondary hover:opacity-90">
-                    Оформить
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-3">
-              {lessons.map((lesson) => (
-                <Card key={lesson.id} className="hover-scale">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-lg ${getCategoryColor(lesson.category)} flex items-center justify-center text-white flex-shrink-0`}>
-                        <Icon name={getCategoryIcon(lesson.category)} size={24} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-semibold">{lesson.title}</h3>
-                          {lesson.isPremium && (
-                            <Badge variant="secondary" className="bg-accent text-accent-foreground flex-shrink-0">
-                              <Icon name="Crown" size={12} className="mr-1" />
-                              Pro
-                            </Badge>
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold mb-4">Ежедневные привычки</h2>
+              <div className="grid gap-3">
+                {habits.map((habit) => (
+                  <Card 
+                    key={habit.id}
+                    className={`transition-all duration-300 hover:shadow-lg ${
+                      habit.completed ? 'border-primary border-2' : ''
+                    }`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => toggleHabit(habit.id)}
+                          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                            habit.completed 
+                              ? 'bg-primary text-primary-foreground animate-celebrate' 
+                              : 'bg-muted hover:bg-muted/80'
+                          }`}
+                        >
+                          {habit.completed ? (
+                            <Icon name="Check" size={24} />
+                          ) : (
+                            <Icon name={getCategoryIcon(habit.category)} size={24} />
                           )}
+                        </button>
+                        
+                        <div className="flex-1">
+                          <h3 className={`font-semibold ${habit.completed ? 'line-through text-muted-foreground' : ''}`}>
+                            {habit.title}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className={`${getCategoryColor(habit.category)} text-white border-0`}>
+                              {habit.category}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                              🔥 {habit.streak} дней
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Icon name="Clock" size={14} />
-                            {lesson.duration}
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {lesson.category}
-                          </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="finance" className="mt-6 animate-slide-up">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Финансовый путь</CardTitle>
+                        <CardDescription>Твой прогресс за месяц</CardDescription>
+                      </div>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button className="gap-2">
+                            <Icon name="Calculator" size={18} />
+                            Рассчитать доход
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Калькулятор дохода</DialogTitle>
+                            <DialogDescription>Управляй своими финансами</DialogDescription>
+                          </DialogHeader>
+                          <Tabs defaultValue="income">
+                            <TabsList className="grid w-full grid-cols-2">
+                              <TabsTrigger value="income">Доходы</TabsTrigger>
+                              <TabsTrigger value="expenses">Расходы</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="income" className="space-y-4">
+                              <div className="space-y-3">
+                                {incomes.map((income) => (
+                                  <div key={income.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                                    <span className="font-medium">{income.source}</span>
+                                    <span className="text-lg font-bold text-green-600">+{income.amount.toLocaleString('ru')} ₽</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="space-y-2 pt-4 border-t">
+                                <Label>Добавить источник дохода</Label>
+                                <Input placeholder="Название источника" id="income-source" />
+                                <Input placeholder="Сумма" type="number" id="income-amount" />
+                                <Button 
+                                  onClick={() => {
+                                    const source = (document.getElementById('income-source') as HTMLInputElement).value;
+                                    const amount = parseFloat((document.getElementById('income-amount') as HTMLInputElement).value);
+                                    if (source && amount) {
+                                      addIncome(source, amount);
+                                      (document.getElementById('income-source') as HTMLInputElement).value = '';
+                                      (document.getElementById('income-amount') as HTMLInputElement).value = '';
+                                    }
+                                  }}
+                                  className="w-full"
+                                >
+                                  <Icon name="Plus" size={16} className="mr-2" />
+                                  Добавить
+                                </Button>
+                              </div>
+                            </TabsContent>
+                            <TabsContent value="expenses" className="space-y-4">
+                              <div className="space-y-3">
+                                {expenses.filter(e => e.isRecurring).map((expense) => (
+                                  <div key={expense.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                                    <div>
+                                      <span className="font-medium">{expense.name}</span>
+                                      <Badge variant="outline" className="ml-2 text-xs">Ежемесячно</Badge>
+                                    </div>
+                                    <span className="text-lg font-bold text-red-600">-{expense.amount.toLocaleString('ru')} ₽</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="space-y-2 pt-4 border-t">
+                                <Label>Добавить постоянный расход</Label>
+                                <Input placeholder="Название (аренда, коммуналка...)" id="expense-name" />
+                                <Input placeholder="Сумма" type="number" id="expense-amount" />
+                                <Button 
+                                  onClick={() => {
+                                    const name = (document.getElementById('expense-name') as HTMLInputElement).value;
+                                    const amount = parseFloat((document.getElementById('expense-amount') as HTMLInputElement).value);
+                                    if (name && amount) {
+                                      addRecurringExpense(name, amount);
+                                      (document.getElementById('expense-name') as HTMLInputElement).value = '';
+                                      (document.getElementById('expense-amount') as HTMLInputElement).value = '';
+                                    }
+                                  }}
+                                  className="w-full"
+                                >
+                                  <Icon name="Plus" size={16} className="mr-2" />
+                                  Добавить
+                                </Button>
+                              </div>
+                            </TabsContent>
+                          </Tabs>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                        <div className="text-sm text-muted-foreground mb-1">Доход</div>
+                        <div className="text-2xl font-bold text-green-600">+{totalIncome.toLocaleString('ru')} ₽</div>
+                      </div>
+                      <div className="text-center p-4 bg-red-50 dark:bg-red-950 rounded-lg">
+                        <div className="text-sm text-muted-foreground mb-1">Расходы</div>
+                        <div className="text-2xl font-bold text-red-600">-{(totalRecurringExpenses + totalDailyExpenses).toLocaleString('ru')} ₽</div>
+                      </div>
+                      <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                        <div className="text-sm text-muted-foreground mb-1">Профит</div>
+                        <div className={`text-2xl font-bold ${monthlyProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                          {monthlyProfit >= 0 ? '+' : ''}{monthlyProfit.toLocaleString('ru')} ₽
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative pt-8">
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-primary"></div>
+                          <span className="text-sm">Начало месяца</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-accent"></div>
+                          <span className="text-sm">Конец месяца</span>
+                        </div>
+                      </div>
+                      <div className="h-3 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-primary via-secondary to-accent transition-all duration-500"
+                          style={{ width: '60%' }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between mt-2 text-sm text-muted-foreground">
+                        <span>1 число</span>
+                        <span className="font-medium text-foreground">День 18</span>
+                        <span>30 число</span>
+                      </div>
+                    </div>
+
+                    <Card className="bg-muted/50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Ежедневные траты</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="Описание траты"
+                            value={dailyExpense}
+                            onChange={(e) => setDailyExpense(e.target.value)}
+                          />
+                          <Input 
+                            placeholder="Сумма"
+                            type="number"
+                            value={dailyExpenseAmount}
+                            onChange={(e) => setDailyExpenseAmount(e.target.value)}
+                            className="w-32"
+                          />
+                          <Button onClick={addDailyExpense} size="icon">
+                            <Icon name="Plus" size={18} />
+                          </Button>
+                        </div>
+                        <ScrollArea className="h-48">
+                          <div className="space-y-2">
+                            {expenses.filter(e => !e.isRecurring).map((expense) => (
+                              <div key={expense.id} className="flex justify-between items-center p-2 bg-background rounded">
+                                <span className="text-sm">{expense.name}</span>
+                                <span className="font-medium text-red-600">-{expense.amount} ₽</span>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                        <div className="pt-2 border-t">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Итого за день:</span>
+                            <span className="text-lg font-bold text-red-600">-{totalDailyExpenses.toLocaleString('ru')} ₽</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-6">
+                <Card className="sticky top-4">
+                  <CardHeader>
+                    <CardTitle>Сбережения</CardTitle>
+                    <CardDescription>Цель на месяц</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative w-48 h-48 mx-auto">
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                          cx="96"
+                          cy="96"
+                          r="80"
+                          stroke="currentColor"
+                          strokeWidth="16"
+                          fill="none"
+                          className="text-muted"
+                        />
+                        <circle
+                          cx="96"
+                          cy="96"
+                          r="80"
+                          stroke="currentColor"
+                          strokeWidth="16"
+                          fill="none"
+                          strokeDasharray={`${2 * Math.PI * 80}`}
+                          strokeDashoffset={`${2 * Math.PI * 80 * (1 - savingsPercent / 100)}`}
+                          className="text-accent transition-all duration-500"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <div className="text-3xl font-bold">{Math.round(savingsPercent)}%</div>
+                        <div className="text-sm text-muted-foreground">выполнено</div>
+                      </div>
+                    </div>
+                    <div className="mt-6 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Накоплено:</span>
+                        <span className="font-bold text-lg">{currentSavings.toLocaleString('ru')} ₽</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Цель:</span>
+                        <span className="font-medium">{savingsGoal.toLocaleString('ru')} ₽</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-3 border-t">
+                        <span className="text-sm text-muted-foreground">Осталось:</span>
+                        <span className="font-bold text-primary">{(savingsGoal - currentSavings).toLocaleString('ru')} ₽</span>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <Label>Обновить сбережения</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="Новая сумма"
+                        onBlur={(e) => {
+                          const value = parseFloat(e.target.value);
+                          if (value) setCurrentSavings(value);
+                        }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="development" className="mt-6 animate-slide-up">
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Мои задачи на развитие</CardTitle>
+                  <CardDescription>Обучение и личностный рост</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3">
+                    {tasks.filter(t => t.category === 'learning').map((task) => (
+                      <Card key={task.id} className="hover-scale">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <button
+                              onClick={() => toggleTask(task.id)}
+                              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
+                                task.completed 
+                                  ? 'bg-learning text-white' 
+                                  : 'bg-muted'
+                              }`}
+                            >
+                              {task.completed ? <Icon name="Check" size={20} /> : <Icon name="GraduationCap" size={20} />}
+                            </button>
+                            <div className="flex-1">
+                              <h3 className={`font-semibold ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                {task.title}
+                              </h3>
+                              <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Рекомендованные курсы</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3">
+                    {['Цифровой маркетинг', 'Тайм-менеджмент', 'Публичные выступления'].map((course, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-lg bg-learning flex items-center justify-center text-white">
+                            <Icon name="BookOpen" size={24} />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">{course}</h4>
+                            <p className="text-sm text-muted-foreground">15 модулей • 2 часа</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm">Начать</Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="health" className="mt-6 animate-slide-up">
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Готовые планы тренировок</CardTitle>
+                  <CardDescription>Выбери подходящую программу</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    {workoutPlans.map((plan) => (
+                      <Card key={plan.id} className="hover-scale">
+                        <CardContent className="p-5">
+                          <div className="flex items-start gap-4">
+                            <div className="w-14 h-14 rounded-xl bg-fitness flex items-center justify-center text-white flex-shrink-0">
+                              <Icon name="Dumbbell" size={28} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <h3 className="font-bold text-lg">{plan.title}</h3>
+                                <Badge variant="secondary" className="flex-shrink-0">
+                                  <Icon name="Clock" size={12} className="mr-1" />
+                                  {plan.duration}
+                                </Badge>
+                              </div>
+                              <div className="space-y-2">
+                                {plan.exercises.map((exercise, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 text-sm">
+                                    <Icon name="CheckCircle2" size={16} className="text-fitness flex-shrink-0" />
+                                    <span>{exercise}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <Button className="mt-4 w-full bg-fitness hover:bg-fitness/90">
+                                Начать тренировку
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Здоровые привычки</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {habits.filter(h => h.category === 'health' || h.category === 'fitness').map((habit) => (
+                        <div key={habit.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                          <button
+                            onClick={() => toggleHabit(habit.id)}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              habit.completed ? 'bg-health text-white' : 'bg-muted'
+                            }`}
+                          >
+                            {habit.completed ? <Icon name="Check" size={20} /> : <Icon name="Heart" size={20} />}
+                          </button>
+                          <div className="flex-1">
+                            <div className={habit.completed ? 'line-through text-muted-foreground' : ''}>
+                              {habit.title}
+                            </div>
+                            <div className="text-sm text-muted-foreground">🔥 {habit.streak} дней</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Питание сегодня</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Калории</span>
+                        <span className="font-bold">1840 / 2200</span>
+                      </div>
+                      <Progress value={84} className="h-2" />
+                      <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                        <div className="p-2 bg-muted rounded">
+                          <div className="font-bold text-blue-600">120г</div>
+                          <div className="text-muted-foreground">Белки</div>
+                        </div>
+                        <div className="p-2 bg-muted rounded">
+                          <div className="font-bold text-green-600">180г</div>
+                          <div className="text-muted-foreground">Углеводы</div>
+                        </div>
+                        <div className="p-2 bg-muted rounded">
+                          <div className="font-bold text-orange-600">60г</div>
+                          <div className="text-muted-foreground">Жиры</div>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              </div>
             </div>
           </TabsContent>
 
